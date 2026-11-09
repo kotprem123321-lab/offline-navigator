@@ -1,0 +1,206 @@
+[
+ {
+  "id": "dnipro",
+  "name": "Днепр",
+  "center": [
+   35.0462,
+   48.4647
+  ],
+  "bbox": [
+   34.5043,
+   48.1054,
+   35.5881,
+   48.824
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/dnipro/tiles.pmtiles.0"
+    ],
+    "size": 19922927
+   },
+   "graph": {
+    "parts": [
+     "data/dnipro/graph.bin.gz.0"
+    ],
+    "size": 6082451
+   },
+   "addr": {
+    "parts": [
+     "data/dnipro/addr.json.gz.0"
+    ],
+    "size": 662062
+   }
+  }
+ },
+ {
+  "id": "kyiv",
+  "name": "Киев",
+  "center": [
+   30.5234,
+   50.4501
+  ],
+  "bbox": [
+   29.9591,
+   50.0908,
+   31.0877,
+   50.8094
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/kyiv/tiles.pmtiles.0"
+    ],
+    "size": 30244380
+   },
+   "graph": {
+    "parts": [
+     "data/kyiv/graph.bin.gz.0"
+    ],
+    "size": 15465923
+   },
+   "addr": {
+    "parts": [
+     "data/kyiv/addr.json.gz.0"
+    ],
+    "size": 1155342
+   }
+  }
+ },
+ {
+  "id": "kharkiv",
+  "name": "Харьков",
+  "center": [
+   36.2304,
+   49.9935
+  ],
+  "bbox": [
+   35.6715,
+   49.6342,
+   36.7893,
+   50.3528
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/kharkiv/tiles.pmtiles.0"
+    ],
+    "size": 22653940
+   },
+   "graph": {
+    "parts": [
+     "data/kharkiv/graph.bin.gz.0"
+    ],
+    "size": 7530874
+   },
+   "addr": {
+    "parts": [
+     "data/kharkiv/addr.json.gz.0"
+    ],
+    "size": 345466
+   }
+  }
+ },
+ {
+  "id": "zaporizhzhia",
+  "name": "Запорожье",
+  "center": [
+   35.1396,
+   47.8388
+  ],
+  "bbox": [
+   34.6043,
+   47.4795,
+   35.6749,
+   48.1981
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/zaporizhzhia/tiles.pmtiles.0"
+    ],
+    "size": 13123635
+   },
+   "graph": {
+    "parts": [
+     "data/zaporizhzhia/graph.bin.gz.0"
+    ],
+    "size": 2605982
+   },
+   "addr": {
+    "parts": [
+     "data/zaporizhzhia/addr.json.gz.0"
+    ],
+    "size": 151143
+   }
+  }
+ },
+ {
+  "id": "odesa",
+  "name": "Одесса",
+  "center": [
+   30.7233,
+   46.4825
+  ],
+  "bbox": [
+   30.2015,
+   46.1232,
+   31.2451,
+   46.8418
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/odesa/tiles.pmtiles.0"
+    ],
+    "size": 11130038
+   },
+   "graph": {
+    "parts": [
+     "data/odesa/graph.bin.gz.0"
+    ],
+    "size": 3672359
+   },
+   "addr": {
+    "parts": [
+     "data/odesa/addr.json.gz.0"
+    ],
+    "size": 297097
+   }
+  }
+ },
+ {
+  "id": "lviv",
+  "name": "Львов",
+  "center": [
+   24.0297,
+   49.8397
+  ],
+  "bbox": [
+   23.4725,
+   49.4804,
+   24.5869,
+   50.199
+  ],
+  "files": {
+   "tiles": {
+    "parts": [
+     "data/lviv/tiles.pmtiles.0"
+    ],
+    "size": 24553991
+   },
+   "graph": {
+    "parts": [
+     "data/lviv/graph.bin.gz.0"
+    ],
+    "size": 7875155
+   },
+   "addr": {
+    "parts": [
+     "data/lviv/addr.json.gz.0"
+    ],
+    "size": 574681
+   }
+  }
+ }
+]

@@ -1,0 +1,59 @@
+# Офлайн-навигатор
+
+Навигатор, который работает **без интернета и мобильной связи**: карта, поиск адреса и маршрут А→Б (на машине или пешком) с вашей точкой по GPS.
+
+Сейчас есть 6 городов, каждый с окрестностями в радиусе 40 км: Днепр, Киев, Харьков, Запорожье, Одесса и Львов.
+
+## Как пользоваться (телефон)
+
+1. Пока есть интернет, откройте в Chrome ссылку на приложение.
+2. В меню Chrome нажмите **«Добавить на главный экран»**: появится иконка, как у обычного приложения.
+3. Нажмите 🗺️ и скачайте нужные города, лучше по Wi-Fi.
+4. Готово. В режиме полёта (геолокацию **не выключайте**) открывайте приложение с иконки. Впишите адрес в «Куда» или нажмите на карту, затем нажмите **«Маршрут»**. Кнопка 📍 держит карту на вас.
+
+Пока поле «Откуда» пустое, маршрут строится от вашего текущего места по GPS.
+
+## Как это устроено
+
+- Ничего не отправляется на сервер: всё считается на телефоне.
+- Карта: векторные тайлы [Protomaps](https://protomaps.com) (PMTiles), рисует [MapLibre GL JS](https://maplibre.org).
+- Маршрут: свой граф дорог из OpenStreetMap, поиск пути алгоритмом A* (`docs/core.js`).
+- Поиск адреса: по улицам и номерам домов из OpenStreetMap. Понимает и русское, и украинское написание («Яворницкого 50» = «Яворницького 50»).
+- Скачанные карты лежат в хранилище браузера (Cache API), а приложение работает офлайн за счёт service worker.
+
+## Как обновить карты (на ПК)
+
+Нужны Node.js и Docker.
+
+```bash
+npm install
+docker build -t navi-osmium tools
+curl -L -o raw/ukraine.osm.pbf https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+# тайлы и дороги/адреса для каждого города — см. команды в tools/cities.mjs (bbox) и ниже
+node tools/cities.mjs   # id и границы городов
+# для каждого города:
+#   docker run --rm -v "$PWD/raw/tiles:/out" protomaps/go-pmtiles extract https://build.protomaps.com/<YYYYMMDD>.pmtiles /out/<id>.pmtiles --bbox=<bbox> --maxzoom=14
+#   docker run --rm -v "$PWD/raw:/data" navi-osmium sh -c "osmium extract -b <bbox> ukraine.osm.pbf -o /tmp/c.pbf && osmium tags-filter /tmp/c.pbf w/highway nwr/addr:housenumber n/place -o /tmp/f.pbf && osmium export /tmp/f.pbf -f geojsonseq -x print_record_separator=false -o <id>.geojsonseq --overwrite"
+node --max-old-space-size=8192 tools/build-data.mjs
+node tools/precache.mjs
+npm test
+```
+
+Новый город: добавьте строку в `tools/cities.mjs` и повторите шаги.
+
+Локальный просмотр: `node tools/serve.mjs` → http://localhost:8080
+
+## Ограничения
+
+- Голосовых подсказок и пошаговых команд («через 200 м направо») нет: только линия маршрута и ваша точка.
+- Если вы свернули с маршрута, он не перестраивается сам: нажмите «Маршрут» ещё раз.
+- Маршрут строится только внутри одного города (40 км вокруг).
+- Пробки и перекрытия не учитываются. Скорость берётся из типа дороги.
+- Найти можно только те дома, у которых адрес внесён в OpenStreetMap. Например, по Харькову и Запорожью адресов пока мало.
+- Во время тревог GPS могут глушить, тогда точка «прыгает».
+
+## Лицензии и атрибуция
+
+- Данные карт © участники [OpenStreetMap](https://www.openstreetmap.org/copyright), лицензия ODbL.
+- Тайлы и стиль: [Protomaps basemaps](https://github.com/protomaps/basemaps) (BSD-3, данные ODbL), шрифты Noto (OFL).
+- [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) (BSD-3) и [PMTiles](https://github.com/protomaps/PMTiles) (BSD-3).

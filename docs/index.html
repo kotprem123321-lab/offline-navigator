@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<title>Офлайн-навигатор</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map"></div>
+
+<section id="panel">
+  <div class="field">
+    <span class="dot a">А</span>
+    <input id="from" placeholder="Моё местоположение" autocomplete="off" enterkeyhint="search">
+  </div>
+  <div class="field">
+    <span class="dot b">Б</span>
+    <input id="to" placeholder="Куда? Улица и дом" autocomplete="off" enterkeyhint="search">
+  </div>
+  <ul id="results" hidden></ul>
+  <div class="row">
+    <div class="modes" role="radiogroup" aria-label="Способ передвижения">
+      <button class="mode on" data-mode="1" role="radio" aria-checked="true">🚗 Машина</button>
+      <button class="mode" data-mode="2" role="radio" aria-checked="false">🚶 Пешком</button>
+    </div>
+    <button id="go" class="primary">Маршрут</button>
+  </div>
+  <div id="info" hidden></div>
+</section>
+
+<div id="fabs">
+  <button id="me" class="fab" aria-label="Где я">📍</button>
+  <button id="maps" class="fab" aria-label="Карты городов">🗺️</button>
+</div>
+<div id="gps" class="badge" hidden></div>
+
+<dialog id="downloads">
+  <h2>Карты городов</h2>
+  <p class="hint">Скачайте заранее, пока есть интернет (лучше по Wi-Fi). Потом всё работает без связи — даже в режиме полёта. Геолокацию на телефоне оставьте включённой.</p>
+  <ul id="cities"></ul>
+  <p class="hint small">Карты © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), стиль и тайлы <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a>, движок карты <a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre</a>.</p>
+  <form method="dialog"><button class="primary wide">Закрыть</button></form>
+</dialog>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/pmtiles.js"></script>
+<script src="vendor/basemaps.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
