@@ -2,7 +2,7 @@
  {
   "id": "dnipro",
   "name": "Днепр",
-  "version": "0df3cae79d",
+  "version": "3782249825",
   "center": [
    35.0462,
    48.4647
@@ -24,7 +24,7 @@
     "parts": [
      "data/dnipro/graph.bin.gz.0"
     ],
-    "size": 6122716
+    "size": 6130318
    },
    "addr": {
     "parts": [
@@ -37,7 +37,7 @@
  {
   "id": "kyiv",
   "name": "Киев",
-  "version": "fc38268573",
+  "version": "53fbc5d4a8",
   "center": [
    30.5234,
    50.4501
@@ -59,7 +59,7 @@
     "parts": [
      "data/kyiv/graph.bin.gz.0"
     ],
-    "size": 15556056
+    "size": 15574805
    },
    "addr": {
     "parts": [
@@ -72,7 +72,7 @@
  {
   "id": "kharkiv",
   "name": "Харьков",
-  "version": "1cd0d0c309",
+  "version": "3d49f4de74",
   "center": [
    36.2304,
    49.9935
@@ -94,7 +94,7 @@
     "parts": [
      "data/kharkiv/graph.bin.gz.0"
     ],
-    "size": 7578762
+    "size": 7585127
    },
    "addr": {
     "parts": [
@@ -107,7 +107,7 @@
  {
   "id": "zaporizhzhia",
   "name": "Запорожье",
-  "version": "94f6bba2f7",
+  "version": "bcb83dac5d",
   "center": [
    35.1396,
    47.8388
@@ -129,7 +129,7 @@
     "parts": [
      "data/zaporizhzhia/graph.bin.gz.0"
     ],
-    "size": 2623110
+    "size": 2624777
    },
    "addr": {
     "parts": [
@@ -142,7 +142,7 @@
  {
   "id": "odesa",
   "name": "Одесса",
-  "version": "7d9b636d8e",
+  "version": "1b9c5baaac",
   "center": [
    30.7233,
    46.4825
@@ -164,7 +164,7 @@
     "parts": [
      "data/odesa/graph.bin.gz.0"
     ],
-    "size": 3699151
+    "size": 3701847
    },
    "addr": {
     "parts": [
@@ -177,7 +177,7 @@
  {
   "id": "lviv",
   "name": "Львов",
-  "version": "9bc5cd97b8",
+  "version": "1e460d0bb9",
   "center": [
    24.0297,
    49.8397
@@ -199,7 +199,7 @@
     "parts": [
      "data/lviv/graph.bin.gz.0"
     ],
-    "size": 7916702
+    "size": 7926795
    },
    "addr": {
     "parts": [

@@ -1,11 +1,11 @@
 {
- "name": "Офлайн-навигатор",
- "short_name": "Навигатор",
+ "name": "Офлайн-навігатор",
+ "short_name": "Навігатор",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
- "background_color": "#ffffff",
- "theme_color": "#1f6feb",
- "lang": "ru",
+ "background_color": "#0057b7",
+ "theme_color": "#0057b7",
+ "lang": "uk",
  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }

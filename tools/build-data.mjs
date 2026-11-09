@@ -37,7 +37,7 @@ function access(t) {
   if (car && ow === '-1') { fwd = false; bwd = true; }
   const max = parseInt(t.maxspeed, 10);
   const kmh = car ? (max > 0 && max < 140 ? Math.min(max, CAR_KMH[hw] * 1.3) : CAR_KMH[hw]) : 0;
-  return { fwd, bwd, foot, kmh: Math.max(5, Math.round(kmh * 0.85)) }; // 0.85: real driving is slower than limits
+  return { fwd, bwd, foot, kmh: Math.max(5, Math.round(kmh * 0.85)), max: car && max > 0 && max <= 140 ? max : 0 }; // 0.85: real driving is slower than limits
 }
 
 const key = ([lon, lat]) => `${lon},${lat}`; // a shared OSM node has identical coordinates in every way
@@ -140,6 +140,7 @@ async function buildCity([id, name, lat, lon]) {
   push(Uint8Array, edges.map((e) => e[3]));
   push(Uint8Array, segs.map((s) => s[4].kmh));
   parts.push(Buffer.from(nodeFlags.buffer));
+  push(Uint8Array, segs.map((s) => s[4].max)); // signed speed limit, 0 = not mapped
   const graph = zlib.gzipSync(Buffer.concat(parts), { level: 9 });
 
   // ---- addresses

@@ -59,7 +59,8 @@ test('one-way streets are respected by car only', () => {
 });
 
 test('turn-by-turn steps and progress along the route', async () => {
-  const { maneuvers, stepText, progress } = await import('../docs/core.js');
+  const { maneuvers, progress } = await import('../docs/core.js');
+  const { stepText } = await import('../docs/i18n.js');
   const a = nearestNode(g, ...A, CAR), b = nearestNode(g, ...B, CAR);
   const r = route(g, a, b, CAR);
   const steps = maneuvers(g, r, idx.roads);
@@ -80,10 +81,23 @@ test('house letter typed with a space or hyphen, and short street types', () => 
 });
 
 test('old map files without road names still open', () => {
-  const S = g.S, cut = gb.byteLength - g.E - S - g.n - 4 * S; // where segName starts
-  const old = Buffer.concat([gb.subarray(0, cut), gb.subarray(cut + 4 * S)]);
+  const S = g.S, cut = gb.byteLength - S - g.E - S - g.n - 4 * S; // where segName starts
+  const old = Buffer.concat([gb.subarray(0, cut), gb.subarray(cut + 4 * S, gb.byteLength - S)]); // v1: no names, no limits
   const og = parseGraph(old.buffer.slice(old.byteOffset, old.byteOffset + old.byteLength));
   assert.equal(og.segName[5], 0);
+  assert.equal(og.segMax[5], 0);
+  assert.ok(g.segMax.some((x) => x === 50 || x === 60), 'some limits mapped');
   assert.deepEqual([...og.nodeFlags.slice(0, 50)], [...g.nodeFlags.slice(0, 50)]);
   assert.throws(() => parseGraph(old.buffer.slice(old.byteOffset, old.byteOffset + old.byteLength - 1)));
+});
+
+test('voice distances have correct Ukrainian and Russian endings', async () => {
+  const { sayDist, sayIn } = await import('../docs/i18n.js');
+  assert.equal(sayDist(300, 'uk'), '300 метрів');
+  assert.equal(sayDist(1000, 'uk'), '1 кілометр');
+  assert.equal(sayDist(2000, 'uk'), '2 кілометри');
+  assert.equal(sayDist(1500, 'uk'), '1,5 кілометра');
+  assert.equal(sayDist(1500, 'ru'), '1,5 километра');
+  assert.equal(sayDist(5000, 'ru'), '5 километров');
+  assert.equal(sayIn(250, { type: 'right', name: 'вулиця Шевченка' }, 'uk'), 'Через 250 метрів поверніть праворуч, вулиця Шевченка');
 });

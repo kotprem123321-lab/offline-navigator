@@ -1,42 +1,42 @@
 <!doctype html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#eef2f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1413" media="(prefers-color-scheme: dark)">
-<title>Офлайн-навигатор</title>
+<meta name="theme-color" content="#0057b7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1424" media="(prefers-color-scheme: dark)">
+<title>Офлайн-навігатор</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="map"></div>
+<div id="map" role="application" aria-label="Map"></div>
 
-<section id="panel" aria-label="Маршрут">
+<section id="panel" data-i18n-aria="route">
   <div class="field">
     <span class="dot a" aria-hidden="true">А</span>
-    <input id="from" placeholder="Моё местоположение" autocomplete="off" enterkeyhint="search" aria-label="Откуда">
-    <button id="swap" class="icon-btn" aria-label="Поменять местами откуда и куда">⇅</button>
+    <input id="from" data-i18n-ph="from" data-i18n-aria="from" autocomplete="off" enterkeyhint="search">
+    <button id="swap" class="icon-btn" data-i18n-aria="swap">⇅</button>
   </div>
   <div class="field">
     <span class="dot b" aria-hidden="true">Б</span>
-    <input id="to" placeholder="Куда? Улица и дом" autocomplete="off" enterkeyhint="search" aria-label="Куда">
-    <button id="fav" class="icon-btn" aria-label="В избранное" aria-pressed="false">☆</button>
+    <input id="to" data-i18n-ph="to" data-i18n-aria="to" autocomplete="off" enterkeyhint="search">
+    <button id="fav" class="icon-btn" data-i18n-aria="fav" aria-pressed="false">☆</button>
   </div>
   <ul id="results" hidden></ul>
   <div class="row">
-    <div class="modes" role="radiogroup" aria-label="Способ передвижения">
-      <button class="mode on" data-mode="1" role="radio" aria-checked="true">🚗 Машина</button>
-      <button class="mode" data-mode="2" role="radio" aria-checked="false">🚶 Пешком</button>
+    <div class="modes" role="radiogroup">
+      <button class="mode on" data-mode="1" role="radio" aria-checked="true">🚗 <span data-i18n="car"></span></button>
+      <button class="mode" data-mode="2" role="radio" aria-checked="false">🚶 <span data-i18n="foot"></span></button>
     </div>
-    <button id="go" class="primary">Маршрут</button>
+    <button id="go" class="primary" data-i18n="route"></button>
   </div>
   <div class="row">
     <div id="info" role="status" hidden></div>
-    <button id="start" class="primary go-btn" hidden>▶ Поехали</button>
+    <button id="start" class="primary go-btn" hidden>▶ <span data-i18n="go"></span></button>
   </div>
 </section>
 
@@ -46,27 +46,47 @@
   <div class="nav-text">
     <div id="navDist"></div>
     <div id="navText"></div>
+    <div id="navThen" class="then" hidden></div>
   </div>
 </section>
-<section id="navbar" aria-label="Навигация">
+<div id="speedo" aria-live="off">
+  <div id="limit" class="limit" hidden></div>
+  <div id="speed" class="speed" hidden><b id="speedVal"></b><small data-i18n="kmh"></small></div>
+</div>
+<section id="navbar">
   <div id="navRemain"></div>
-  <button id="voice" class="icon-btn" aria-label="Голосовые подсказки" aria-pressed="true">🔊</button>
-  <button id="stop" class="stop-btn">Стоп</button>
+  <button id="overview" class="icon-btn" data-i18n-aria="overview">🗺️</button>
+  <button id="voice" class="icon-btn" data-i18n-aria="voice" aria-pressed="true">🔊</button>
+  <button id="stop" class="stop-btn" data-i18n="stop"></button>
 </section>
 
 <div id="fabs">
-  <button id="me" class="fab" aria-label="Где я"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
-  <button id="maps" class="fab" aria-label="Карты городов"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2.5 8 12 13l9.5-5z"/><path d="m2.5 12.5 9.5 5 9.5-5M2.5 16.5l9.5 5 9.5-5" stroke-linecap="round"/></svg></button>
+  <button id="me" class="fab" data-i18n-aria="where"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button id="maps" class="fab" data-i18n-aria="maps"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2.5 8 12 13l9.5-5z"/><path d="m2.5 12.5 9.5 5 9.5-5M2.5 16.5l9.5 5 9.5-5" stroke-linecap="round"/></svg></button>
+  <button id="settings" class="fab" data-i18n-aria="settings"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </div>
 <div id="gps" class="badge" role="status" hidden></div>
 
 <dialog id="downloads" aria-labelledby="dl-title">
-  <h2 id="dl-title">Карты городов</h2>
-  <p class="hint">Скачайте заранее, пока есть интернет (лучше по Wi-Fi). Потом всё работает без связи — даже в режиме полёта. Геолокацию на телефоне оставьте включённой.</p>
-  <p id="ios-hint" class="hint small" hidden>На iPhone: нажмите «Поделиться» → «На экран Домой» и открывайте навигатор с иконки — иначе Safari может удалить скачанные карты через 7 дней.</p>
+  <h2 id="dl-title" data-i18n="mapsTitle"></h2>
+  <p class="hint" data-i18n="mapsHint"></p>
+  <p id="ios-hint" class="hint small" data-i18n="iosHint" hidden></p>
   <ul id="cities"></ul>
-  <p class="hint small">Карты © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), стиль и тайлы <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a>, движок карты <a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre</a>.</p>
-  <form method="dialog"><button class="primary wide">Закрыть</button></form>
+  <p class="hint small"><span data-i18n="credits"></span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">openstreetmap.org/copyright</a></p>
+  <form method="dialog"><button class="primary wide" data-i18n="close"></button></form>
+</dialog>
+
+<dialog id="settingsDlg" aria-labelledby="set-title">
+  <h2 id="set-title" data-i18n="settings"></h2>
+  <fieldset class="seg">
+    <legend data-i18n="language"></legend>
+    <label><input type="radio" name="lang" value="uk"> Українська</label>
+    <label><input type="radio" name="lang" value="ru"> Русский</label>
+  </fieldset>
+  <p id="voiceInfo" class="hint small"></p>
+  <button id="voiceTest" class="wide" type="button">🔊 <span data-i18n="voiceTest"></span></button>
+  <label class="check"><input type="checkbox" id="speedWarn"> <span data-i18n="speedWarn"></span></label>
+  <form method="dialog"><button class="primary wide" data-i18n="close"></button></form>
 </dialog>
 
 <script src="vendor/maplibre-gl.js"></script>

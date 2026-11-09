@@ -17,14 +17,14 @@ export function parseGraph(buf) {
     off: take(Uint32Array, n + 1), target: take(Uint32Array, E), seg: take(Uint32Array, E),
     segLen: take(Float32Array, S), geomOff: take(Uint32Array, S + 1), geom: take(Int32Array, 2 * G),
   };
-  // maps downloaded before road names existed have no segName block: keep them working (no street names in prompts)
-  const total = 16 + 4 * (3 * n + 1 + 2 * E + 2 * S + 1 + 2 * G) + E + S + n;
-  if (buf.byteLength === total + 4 * S) g.segName = take(Uint32Array, S);
-  else if (buf.byteLength === total) g.segName = new Uint32Array(S);
-  else throw new Error('Файл карты повреждён — удалите и скачайте город заново.');
+  // Older downloads lack later blocks: v1 has no segName/segMax, v2 no segMax. Keep them working.
+  const v1 = 16 + 4 * (3 * n + 1 + 2 * E + 2 * S + 1 + 2 * G) + E + S + n, v2 = v1 + 4 * S, v3 = v2 + S;
+  if (![v1, v2, v3].includes(buf.byteLength)) throw new Error('Map file is damaged — delete and download the city again.');
+  g.segName = buf.byteLength >= v2 ? take(Uint32Array, S) : new Uint32Array(S); // index into addr.json "roads"
   g.edgeFlags = take(Uint8Array, E);
   g.segSpeed = take(Uint8Array, S);
   g.nodeFlags = take(Uint8Array, n);
+  g.segMax = buf.byteLength === v3 ? take(Uint8Array, S) : new Uint8Array(S); // speed limit km/h, 0 = unknown
   return g;
 }
 
@@ -145,14 +145,6 @@ export function maneuvers(g, r, roads) {
   steps.push({ type: 'arrive', name: '', at: last, dist: cum[last], lon: coords[last][0], lat: coords[last][1] });
   return steps;
 }
-
-const VERB = {
-  depart: 'Начните движение', left: 'поверните налево', right: 'поверните направо',
-  'slight-left': 'держитесь левее', 'slight-right': 'держитесь правее', uturn: 'развернитесь',
-  straight: 'продолжайте прямо', arrive: 'вы на месте',
-};
-export const stepText = (s) => VERB[s.type] + (s.name && s.type !== 'arrive' ? (s.type === 'depart' ? ' по ' : ' на ') + s.name : '');
-export const fmtDist = (m) => (m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} км` : `${Math.max(10, Math.round(m / 10) * 10)} м`);
 
 /**
  * Where we are on the route: nearest point on the line to (lat, lon).

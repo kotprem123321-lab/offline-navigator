@@ -35,6 +35,7 @@
  "assets/sprites/light@2x.json",
  "assets/sprites/light@2x.png",
  "core.js",
+ "i18n.js",
  "icon.svg",
  "index.html",
  "manifest.webmanifest",

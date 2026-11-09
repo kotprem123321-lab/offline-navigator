@@ -1,4 +1,5 @@
-import { parseGraph, nearestNode, route, prepareIndex, search, dist, maneuvers, stepText, progress, fmtDist, CAR } from './core.js';
+import { parseGraph, nearestNode, route, prepareIndex, search, dist, maneuvers, progress, CAR } from './core.js';
+import { t, lang, setLang, applyStatic, stepText, thenText, fmtDist, sayIn, cityName } from './i18n.js';
 
 const DATA = 'navi-data-v1';
 const $ = (s) => document.querySelector(s);
@@ -38,7 +39,7 @@ map.on('style.load', () => {
   map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#fff', 'line-width': 10 } });
   map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#0b7a69', 'line-width': 6 } });
+    paint: { 'line-color': '#0057b7', 'line-width': 6 } });
 });
 const lineOf = (coords) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} });
 
@@ -100,7 +101,7 @@ async function remove(c) {
 }
 
 async function openCity(c) {
-  info('Открываю карту…');
+  info(t('opening'));
   try {
     // load everything into locals first, so a failure leaves the previous city intact
     const tiles = await fileBlob(c.files.tiles);
@@ -110,7 +111,7 @@ async function openCity(c) {
     stopNav();
     graph = g; index = idx; city = c;
   } catch (e) {
-    return info(`Не удалось открыть «${c.name}»: ${e.message} Удалите карту и скачайте заново.`, true);
+    return info(t('openFail', { name: cityName(c), err: e.message }), true);
   }
   try { localStorage.city = c.id; } catch {}
   clearRoute();
@@ -134,9 +135,9 @@ async function renderCities() {
     const st = await status(c);
     const busy = downloading.has(c.id);
     li.className = city?.id === c.id ? 'current' : '';
-    const name = Object.assign(document.createElement('div'), { className: 'name', textContent: c.name });
-    const label = busy ? 'скачивается…' : { none: 'не скачана', ok: city?.id === c.id ? 'открыта' : 'скачана', old: 'есть обновление' }[st];
-    name.append(Object.assign(document.createElement('small'), { textContent: `${mb} МБ · ${label}` }));
+    const name = Object.assign(document.createElement('div'), { className: 'name', textContent: cityName(c) });
+    const label = busy ? t('stDownloading') : { none: t('stNone'), ok: city?.id === c.id ? t('stOpen') : t('stOk'), old: t('stOld') }[st];
+    name.append(Object.assign(document.createElement('small'), { textContent: `${mb} ${t('mb')} · ${label}` }));
     li.append(name);
     const btn = (text, fn, cls = '') => {
       const b = Object.assign(document.createElement('button'), { textContent: text, className: cls, disabled: busy });
@@ -148,8 +149,8 @@ async function renderCities() {
       name.append(bar);
     }
     if (st !== 'ok') {
-      btn(st === 'old' ? 'Обновить' : 'Скачать', async () => {
-        if (!canUnzip) return alert('Этот браузер слишком старый для офлайн-карт. Обновите Chrome / iOS (нужен iOS 16.4+).');
+      btn(st === 'old' ? t('update') : t('download'), async () => {
+        if (!canUnzip) return alert(t('oldBrowser'));
         downloading.set(c.id, 0);
         renderCities();
         try {
@@ -163,16 +164,16 @@ async function renderCities() {
         } catch (e) {
           downloading.delete(c.id);
           alert(e.name === 'QuotaExceededError'
-            ? 'На телефоне не хватает места для этой карты. Освободите память или удалите другой город.'
-            : 'Не получилось скачать. Проверьте интернет и попробуйте ещё раз.\n' + e.message);
+            ? t('noSpace')
+            : t('dlFail') + '\n' + e.message);
         }
         renderCities();
       }, 'primary');
     }
     if (st !== 'none') {
-      if (city?.id !== c.id) btn('Открыть', async () => { dlg.close(); await openCity(c); }, st === 'ok' ? 'primary' : '');
-      btn('Удалить', async () => {
-        if (!confirm(`Удалить карту «${c.name}» с телефона?`)) return;
+      if (city?.id !== c.id) btn(t('open'), async () => { dlg.close(); await openCity(c); }, st === 'ok' ? 'primary' : '');
+      btn(t('remove'), async () => {
+        if (!confirm(t('removeQ', { name: cityName(c) }))) return;
         await remove(c);
         if (city?.id === c.id) location.reload(); else renderCities();
       });
@@ -211,10 +212,10 @@ for (const f of ['from', 'to']) {
 function showResults(q) {
   results.replaceChildren();
   results.hidden = false;
-  if (!index) { results.innerHTML = '<li class="empty">Сначала скачайте карту города (кнопка 🗺️)</li>'; return; }
+  if (!index) { results.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: t('needMap') })); return; }
   const c = map.getCenter();
   const list = search(index, q, 20, { lat: c.lat, lon: c.lng });
-  if (!list.length) { results.innerHTML = '<li class="empty">Ничего не найдено. Пример: «Яворницкого 50»</li>'; return; }
+  if (!list.length) { results.replaceChildren(Object.assign(document.createElement('li'), { className: 'empty', textContent: t('nothing') })); return; }
   for (const r of list) {
     const li = Object.assign(document.createElement('li'), { textContent: r.label, tabIndex: 0 });
     li.onclick = () => choose(field, r);
@@ -235,7 +236,7 @@ function choose(f, r) {
 map.on('click', (e) => {
   if (!city) return;
   results.hidden = true;
-  choose('to', { lat: e.lngLat.lat, lon: e.lngLat.lng, label: 'Точка на карте' });
+  choose('to', { lat: e.lngLat.lat, lon: e.lngLat.lng, label: t('mapPoint') });
 });
 
 
@@ -246,7 +247,7 @@ const store = {
 };
 const samePlace = (a, b) => dist(a.lat, a.lon, b.lat, b.lon) < 30;
 function remember(p) {
-  if (!p || p.label === 'Моё местоположение') return;
+  if (!p || p.me) return;
   store.set('recent', [p, ...store.get('recent').filter((x) => !samePlace(x, p))].slice(0, 6));
 }
 function showSaved(f) {
@@ -272,12 +273,12 @@ function updateFav() {
   $('#fav').textContent = on ? '★' : '☆';
 }
 $('#fav').onclick = () => {
-  if (!pts.to) return info('Сначала выберите, куда ехать — потом добавьте в избранное.', true);
+  if (!pts.to) return info(t('favFirst'), true);
   const favs = store.get('favs');
   const i = favs.findIndex((x) => samePlace(x, pts.to));
   if (i >= 0) favs.splice(i, 1);
   else {
-    const name = prompt('Название (например «Дом», «Работа»):', pts.to.label);
+    const name = prompt(t('favName'), pts.to.label);
     if (name === null) return;
     favs.unshift({ ...pts.to, label: name.trim() || pts.to.label });
   }
@@ -285,15 +286,15 @@ $('#fav').onclick = () => {
   updateFav();
 };
 $('#swap').onclick = () => {
-  const from = pts.from || (myPos && { ...myPos, label: 'Моё местоположение' });
+  const from = pts.from || (myPos && { ...myPos, me: true, label: t('me') });
   const to = pts.to;
   pts.from = to; pts.to = from;
   for (const f of ['from', 'to']) {
-    $('#' + f).value = pts[f] && pts[f].label !== 'Моё местоположение' ? pts[f].label : '';
-    if (pts[f] && pts[f].label !== 'Моё местоположение') markers[f].setLngLat([pts[f].lon, pts[f].lat]).addTo(map); else markers[f].remove();
+    $('#' + f).value = pts[f] && pts[f].me !== true ? pts[f].label : '';
+    if (pts[f] && pts[f].me !== true) markers[f].setLngLat([pts[f].lon, pts[f].lat]).addTo(map); else markers[f].remove();
   }
-  if (pts.to?.label === 'Моё местоположение') pts.to = { ...pts.to }; // keep a fixed point as destination
-  if (pts.from?.label === 'Моё местоположение') pts.from = null; // follow live GPS
+  if (pts.to?.me) pts.to = { ...pts.to }; // keep a fixed point as destination
+  if (pts.from?.me) pts.from = null; // follow live GPS
   updateFav();
   if (lastRoute) build();
 };
@@ -311,17 +312,17 @@ $('#go').onclick = () => build();
 /** Builds a route; `quiet` = automatic re-route during navigation (no map jump, no error popups). */
 function build(quiet = false) {
   results.hidden = true;
-  if (!graph) return info('Сначала скачайте карту города (кнопка 🗺️)', true);
+  if (!graph) return info(t('needMap'), true);
   const from = pts.from || myPos;
-  if (!from) return info('Нет GPS. Выйдите на открытое место или впишите «Откуда».', true);
-  if (!pts.to) return info('Укажите, куда ехать: адрес или нажмите на карту.', true);
-  for (const [p, what] of [[from, 'Начало'], [pts.to, 'Конец']]) {
-    if (!inCity(p)) return info(`${what} маршрута за пределами карты «${city.name}».`, true);
+  if (!from) return info(t('noGps'), true);
+  if (!pts.to) return info(t('noTo'), true);
+  for (const [p, what] of [[from, t('start')], [pts.to, t('end')]]) {
+    if (!inCity(p)) return info(t('outside', { what, city: cityName(city) }), true);
   }
   const a = nearestNode(graph, from.lat, from.lon, mode);
   const b = nearestNode(graph, pts.to.lat, pts.to.lon, mode);
   const r = a >= 0 && b >= 0 && route(graph, a, b, mode);
-  if (!r) return info('Не удалось проложить маршрут.', true);
+  if (!r) return info(t('noRoute'), true);
   r.steps = maneuvers(graph, r, index.roads || []);
   lastRoute = r;
   remember(pts.to);
@@ -336,7 +337,7 @@ function build(quiet = false) {
 function clearRoute() { lastRoute = null; map.getSource('route')?.setData(lineOf([])); $('#start').hidden = true; stopNav(); }
 function fmtTime(s) {
   const m = Math.max(1, Math.round(s / 60));
-  return m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, '0')} мин`;
+  return m < 60 ? `${m} ${t('min')}` : `${Math.floor(m / 60)} ${t('h')} ${String(m % 60).padStart(2, '0')} ${t('min')}`;
 }
 function info(text, err = false) {
   const el = $('#info');
@@ -344,41 +345,61 @@ function info(text, err = false) {
 }
 
 // ---- turn-by-turn navigation -----------------------------------------------
-// nav = {hint, spoken:Set, offCount, lastReroute, wake}
+// nav = {hint, spoken:Set, offCount, lastReroute, baseOff, wake, arrived, overview, speeding}
 let nav = null;
 const ICON = { depart: '↑', straight: '↑', left: '↰', right: '↱', 'slight-left': '↖', 'slight-right': '↗', uturn: '↶', arrive: '🏁' };
-let voiceOn = true;
-try { voiceOn = localStorage.voice !== 'off'; } catch {}
+const pref = (k, def) => { try { return localStorage[k] ?? def; } catch { return def; } };
+const setPref = (k, v) => { try { localStorage[k] = v; } catch {} };
+let voiceOn = pref('voice', 'on') !== 'off';
+let speedWarn = pref('speedWarn', 'on') !== 'off';
 
+/** Best installed voice for the interface language (offline TTS voices on the phone). */
+function pickVoice() {
+  const vs = 'speechSynthesis' in window ? speechSynthesis.getVoices() : [];
+  const mine = vs.filter((v) => v.lang?.toLowerCase().startsWith(lang));
+  return mine.find((v) => v.localService) || mine[0] || null;
+}
 function say(text) {
   if (!voiceOn || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ru-RU';
-  const v = speechSynthesis.getVoices().find((x) => x.lang?.startsWith('ru')) || speechSynthesis.getVoices().find((x) => x.lang?.startsWith('uk'));
-  if (v) { u.voice = v; u.lang = v.lang; }
+  const v = pickVoice();
+  u.lang = v?.lang || (lang === 'uk' ? 'uk-UA' : 'ru-RU');
+  if (v) u.voice = v;
   speechSynthesis.speak(u);
 }
 function setVoice(on) {
   voiceOn = on;
-  try { localStorage.voice = on ? 'on' : 'off'; } catch {}
+  setPref('voice', on ? 'on' : 'off');
   $('#voice').textContent = on ? '🔊' : '🔇';
   $('#voice').setAttribute('aria-pressed', on);
-  if (!on) speechSynthesis?.cancel();
+  if (!on && 'speechSynthesis' in window) speechSynthesis.cancel();
 }
 $('#voice').onclick = () => setVoice(!voiceOn);
 
 $('#start').onclick = startNav;
 $('#stop').onclick = () => { stopNav(); info(lastRoute ? `${fmtDist(lastRoute.meters)} · ${fmtTime(lastRoute.seconds)}` : ''); };
+$('#overview').onclick = () => {
+  if (!nav || !lastRoute) return;
+  nav.overview = !nav.overview;
+  $('#overview').classList.toggle('on', nav.overview);
+  if (nav.overview) {
+    follow = false;
+    const c = lastRoute.coords.slice(nav.hint);
+    const b = c.reduce((bb, x) => bb.extend(x), new maplibregl.LngLatBounds(c[0], c[0]));
+    map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
+    map.fitBounds(b, { padding: { top: $('#nav').offsetHeight + 40, bottom: $('#navbar').offsetHeight + 40, left: 40, right: 40 }, maxZoom: 17, duration: 800 });
+  } else { follow = true; if (myPos) onNavPosition(myPos); }
+};
 
 async function startNav() {
   if (!lastRoute) return;
   if (pts.from) { // navigating needs the live GPS as the start
-    if (!myPos) return info('Для навигации нужен GPS. Очистите «Откуда» и дождитесь сигнала.', true);
+    if (!myPos) return info(t('navNeedsGps'), true);
     pts.from = null; $('#from').value = ''; markers.from.remove();
     build(true);
   }
-  nav = { hint: 0, spoken: new Set(), offCount: 0, lastReroute: 0, wake: null };
+  nav = { hint: 0, spoken: new Set(), offCount: 0, lastReroute: 0, baseOff: 0, wake: null, overview: false, speeding: false };
   document.body.classList.add('navigating');
   setVoice(voiceOn);
   try { nav.wake = await navigator.wakeLock?.request('screen'); } catch {} // keep the screen on while driving
@@ -390,13 +411,21 @@ function stopNav() {
   if (!nav) return;
   nav.wake?.release?.().catch(() => {});
   nav = null;
-  document.body.classList.remove('navigating');
-  speechSynthesis?.cancel();
+  document.body.classList.remove('navigating', 'speeding');
+  $('#overview').classList.remove('on');
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
   map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
 }
 document.addEventListener('visibilitychange', async () => {
   if (nav && document.visibilityState === 'visible' && !nav.wake) try { nav.wake = await navigator.wakeLock?.request('screen'); } catch {}
 });
+
+/** Speed limit (km/h) of the road at coords index i, 0 if unknown. */
+function limitAt(r, i) {
+  let leg = r.legs[0];
+  for (const l of r.legs) { if (l.at > i) break; leg = l; }
+  return leg ? graph.segMax[leg.seg] : 0;
+}
 
 const OFF_ROUTE = { [CAR]: 45, 2: 30 }; // metres before we call it "off route"
 function onNavPosition(pos) {
@@ -406,10 +435,10 @@ function onNavPosition(pos) {
 
   // off route twice in a row -> quietly rebuild from here (GPS jitter gives single bad fixes)
   // baseOff: how far from any road we were at the last re-route (yard, park) — don't re-route again for that
-  if (p.off > OFF_ROUTE[r.mode] + (pos.acc || 0) / 2 + (nav.baseOff || 0)) {
+  if (p.off > OFF_ROUTE[r.mode] + (pos.acc || 0) / 2 + nav.baseOff) {
     if (++nav.offCount >= 2 && Date.now() - nav.lastReroute > 4000) {
       nav.lastReroute = Date.now(); nav.offCount = 0;
-      say('Перестраиваю маршрут');
+      say(t('rerouting'));
       build(true);
       nav.hint = 0; nav.spoken.clear();
       nav.baseOff = progress(lastRoute, pos.lat, pos.lon).off;
@@ -418,32 +447,50 @@ function onNavPosition(pos) {
   } else { nav.offCount = 0; if (p.off < OFF_ROUTE[r.mode]) nav.baseOff = 0; }
 
   const remain = r.meters - p.along;
-  const next = r.steps.find((s) => s.dist > p.along + 5 && s.type !== 'depart') || r.steps.at(-1);
+  const ni = r.steps.findIndex((s) => s.dist > p.along + 5 && s.type !== 'depart');
+  const next = r.steps[ni] || r.steps.at(-1);
   const toNext = Math.max(0, next.dist - p.along);
-  $('#navIcon').textContent = ICON[next.type];
-  $('#navIcon').dataset.type = next.type;
-  $('#navDist').textContent = next.type === 'arrive' && toNext < 30 ? 'Вы на месте' : fmtDist(toNext);
-  $('#navText').textContent = next.type === 'arrive' ? (toNext < 30 ? '' : 'до цели') : stepText(next);
+  // a second turn right after this one: show and say "then …"
+  const after = ni >= 0 ? r.steps[ni + 1] : null;
+  const thenSoon = after && after.type !== 'straight' && after.dist - next.dist < (r.mode === CAR ? 150 : 40) ? after : null;
+
+  const icon = $('#navIcon');
+  if (icon.dataset.type !== next.type) { icon.textContent = ICON[next.type]; icon.dataset.type = next.type; }
+  $('#navDist').textContent = next.type === 'arrive' && toNext < 30 ? t('arrivedShort') : fmtDist(toNext);
+  $('#navText').textContent = next.type === 'arrive' ? (toNext < 30 ? '' : t('toTarget')) : stepText(next);
+  $('#navThen').hidden = !thenSoon;
+  if (thenSoon) { $('#navThen').textContent = `${thenText(thenSoon)} ${ICON[thenSoon.type]}`; $('#navThen').dataset.type = thenSoon.type; }
   const secs = r.seconds * (remain / Math.max(1, r.meters));
-  const eta = new Date(Date.now() + secs * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  $('#navRemain').textContent = `${fmtDist(remain)} · ${fmtTime(secs)} · прибытие ${eta}`;
+  const eta = new Date(Date.now() + secs * 1000).toLocaleTimeString(lang === 'uk' ? 'uk-UA' : 'ru-RU', { hour: '2-digit', minute: '2-digit' });
+  $('#navRemain').textContent = `${fmtDist(remain)} · ${fmtTime(secs)} · ${t('eta')} ${eta}`;
+
+  // speed and the limit of the current road (from OpenStreetMap maxspeed, when mapped)
+  const kmh = pos.speed != null ? Math.round(pos.speed * 3.6) : null;
+  const lim = r.mode === CAR ? limitAt(r, p.idx) : 0;
+  $('#speed').hidden = kmh == null || r.mode !== CAR;
+  $('#speedVal').textContent = kmh ?? '';
+  $('#limit').hidden = !lim;
+  $('#limit').textContent = lim || '';
+  const over = !!lim && kmh != null && kmh > lim + 5;
+  document.body.classList.toggle('speeding', over);
+  if (over && !nav.speeding && speedWarn) { say(t('speeding')); navigator.vibrate?.([200, 100, 200]); }
+  nav.speeding = over;
 
   // announcements: far, near, now (distances depend on speed of travel)
   const marks = r.mode === CAR ? [[800, 'far'], [250, 'near'], [40, 'now']] : [[120, 'near'], [20, 'now']];
   for (const [m, tag] of marks) {
-    const key = next.at + tag;
-    if (toNext <= m && !nav.spoken.has(key)) {
-      for (const [, t] of marks) nav.spoken.add(next.at + t); // don't repeat the farther ones later
-      if (next.type === 'arrive') say(toNext < 30 ? 'Вы прибыли' : `Через ${fmtDist(toNext)} вы на месте`);
-      else say(tag === 'now' ? stepText(next) : `Через ${fmtDist(toNext)} ${stepText(next)}`);
-      navigator.vibrate?.(tag === 'now' ? [120, 80, 120] : 80);
-      break;
-    }
+    if (toNext > m || nav.spoken.has(next.at + tag)) continue;
+    for (const [, tg] of marks) nav.spoken.add(next.at + tg); // don't repeat the farther ones later
+    const then = thenSoon && tag !== 'far' ? `, ${thenText(thenSoon)}` : '';
+    if (next.type === 'arrive') say(toNext < 30 ? t('arrived') : sayIn(toNext, next));
+    else say((tag === 'now' ? stepText(next) : sayIn(toNext, next)) + then);
+    navigator.vibrate?.(tag === 'now' ? [120, 80, 120] : 80);
+    break;
   }
   if (next.type === 'arrive' && toNext < 25 && !nav.arrived) { nav.arrived = true; setTimeout(stopNav, 4000); }
 
   // camera: follow and turn the map so that "up" is where we're going
-  if (follow) {
+  if (follow && !nav.overview) {
     const ahead = r.coords[Math.min(r.coords.length - 1, p.idx + 1)];
     const brg = pos.heading ?? Math.atan2((ahead[0] - pos.lon) * Math.cos(pos.lat * Math.PI / 180), ahead[1] - pos.lat) * 180 / Math.PI;
     map.easeTo({ center: [pos.lon, pos.lat], bearing: brg, pitch: r.mode === CAR ? 50 : 30,
@@ -453,32 +500,50 @@ function onNavPosition(pos) {
   map.getSource('route')?.setData(lineOf([[pos.lon, pos.lat], ...r.coords.slice(p.idx + 1)]));
 }
 
+// ---- settings: language, voice, speed warning ------------------------------
+const setDlg = $('#settingsDlg');
+function renderSettings() {
+  for (const el of setDlg.querySelectorAll('input[name=lang]')) el.checked = el.value === lang;
+  $('#speedWarn').checked = speedWarn;
+  const v = pickVoice();
+  $('#voiceInfo').textContent = v ? t('voiceOk', { name: v.name }) : t('voiceMissing');
+  $('#voiceInfo').classList.toggle('warn', !v);
+}
+$('#settings').onclick = () => { renderSettings(); setDlg.showModal(); };
+for (const el of setDlg.querySelectorAll('input[name=lang]')) {
+  el.onchange = () => { setLang(el.value); applyStatic(); renderSettings(); if (lastRoute) build(true); };
+}
+$('#speedWarn').onchange = (e) => { speedWarn = e.target.checked; setPref('speedWarn', speedWarn ? 'on' : 'off'); };
+$('#voiceTest').onclick = () => { const was = voiceOn; voiceOn = true; say(t('voiceSample')); voiceOn = was; };
+if ('speechSynthesis' in window) speechSynthesis.addEventListener?.('voiceschanged', () => setDlg.open && renderSettings());
+
 // ---- GPS (works without internet: the phone only listens to satellites) ----
 const badge = $('#gps');
 function gpsBadge(text) { badge.textContent = text; badge.hidden = !text; }
 function onPosition(pos) {
   const first = !myPos;
-  myPos = { label: 'Моё местоположение', ...pos };
+  myPos = { me: true, label: t('me'), ...pos };
   meMarker.setLngLat([pos.lon, pos.lat]).addTo(map);
   meEl.classList.toggle('heading', pos.heading != null);
   if (pos.heading != null) meEl.style.setProperty('--heading', `${pos.heading - map.getBearing()}deg`);
-  gpsBadge(`GPS ±${Math.round(pos.acc ?? 0)} м` + (city && !inCity(myPos) ? ' · вы вне карты города' : ''));
+  gpsBadge(`GPS ±${Math.round(pos.acc ?? 0)} м` + (city && !inCity(myPos) ? t('outsideCity') : ''));
   if (nav && lastRoute) return onNavPosition(myPos);
   if (follow || (first && inCity(myPos))) map.easeTo({ center: [pos.lon, pos.lat], zoom: Math.max(map.getZoom(), 15) });
 }
 if ('geolocation' in navigator) {
-  gpsBadge('GPS: ищу спутники…');
+  gpsBadge(t('gpsSearch'));
   navigator.geolocation.watchPosition((p) => {
     const c = p.coords;
     // heading is only meaningful while moving
-    onPosition({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, heading: c.speed > 1.5 && Number.isFinite(c.heading) ? c.heading : null });
+    onPosition({ lat: c.latitude, lon: c.longitude, acc: c.accuracy, speed: Number.isFinite(c.speed) ? c.speed : null,
+      heading: c.speed > 1.5 && Number.isFinite(c.heading) ? c.heading : null });
   }, (e) => {
-    gpsBadge(e.code === 1 ? 'GPS выключен: разрешите доступ к геолокации' : 'GPS: нет сигнала, выйдите на открытое место');
+    gpsBadge(e.code === 1 ? t('gpsOff') : t('gpsNoSignal'));
   }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 60000 });
-} else gpsBadge('GPS недоступен в этом браузере');
+} else gpsBadge(t('gpsNone'));
 
 $('#me').onclick = () => {
-  if (!myPos) return info('Пока нет GPS-сигнала.', true);
+  if (!myPos) return info(t('noFix'), true);
   follow = true;
   $('#me').classList.add('on');
   if (nav) return onNavPosition(myPos);
@@ -487,6 +552,7 @@ $('#me').onclick = () => {
 map.on('dragstart', () => { follow = false; $('#me').classList.remove('on'); });
 
 // ---- start -----------------------------------------------------------------
+applyStatic();
 (async () => {
   cities = await (await fetch('data/cities.json')).json();
   let saved = null;
@@ -495,7 +561,7 @@ map.on('dragstart', () => { follow = false; $('#me').classList.remove('on'); });
   for (const c of ordered) if ((await status(c)) !== 'none') return openCity(c);
   renderCities();
   dlg.showModal();
-})().catch((e) => info('Ошибка запуска: ' + e.message, true));
+})().catch((e) => info(t('startErr') + e.message, true));
 
 // Debug / demo hook: navi.simulate() drives along the current route with fake GPS.
 window.navi = {
@@ -510,9 +576,9 @@ window.navi = {
       along += speed * everyMs / 1000;
       const i = r.cum.findIndex((d) => d >= along);
       if (i < 0) { clearInterval(this.timer); return; }
-      const t = (along - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1] || 1);
+      const k = (along - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1] || 1);
       const [a, b] = [r.coords[i - 1], r.coords[i]];
-      onPosition({ lat: a[1] + (b[1] - a[1]) * t, lon: a[0] + (b[0] - a[0]) * t, acc: 5, heading: null });
+      onPosition({ lat: a[1] + (b[1] - a[1]) * k, lon: a[0] + (b[0] - a[0]) * k, acc: 5, speed, heading: null });
     }, everyMs);
     return 'driving';
   },

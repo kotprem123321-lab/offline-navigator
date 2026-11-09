@@ -1,5 +1,5 @@
 // Keeps the app itself available offline. Downloaded city maps live in the "navi-data-v1" cache (see app.js).
-const VERSION = '61a23d8a39';
+const VERSION = '8c0d999bc9';
 const SHELL = 'navi-shell-' + VERSION;
 
 self.addEventListener('install', (e) => e.waitUntil((async () => {
