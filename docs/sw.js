@@ -1,10 +1,11 @@
 // Keeps the app itself available offline. Downloaded city maps live in the "navi-data-v1" cache (see app.js).
-const VERSION = '9a808cd813';
+const VERSION = '61a23d8a39';
 const SHELL = 'navi-shell-' + VERSION;
 
 self.addEventListener('install', (e) => e.waitUntil((async () => {
   const list = await (await fetch('precache.json', { cache: 'no-store' })).json();
-  await (await caches.open(SHELL)).addAll(list);
+  // 'reload' skips the HTTP cache, so a new version never mixes with stale files
+  await (await caches.open(SHELL)).addAll(list.map((u) => new Request(u, { cache: 'reload' })));
   await self.skipWaiting();
 })()));
 
@@ -17,11 +18,17 @@ self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;
   if (u.pathname.endsWith('/data/cities.json')) {
-    // network first so new maps show up; cached copy when offline
-    e.respondWith(fetch(e.request).then(async (r) => {
-      if (r.ok) await (await caches.open(SHELL)).put(e.request, r.clone());
-      return r;
-    }).catch(() => caches.match(e.request)));
+    // network first so new maps show up, but give up after 3 s: during outages the network often just hangs
+    e.respondWith((async () => {
+      const cached = await caches.match(e.request);
+      const net = fetch(e.request).then(async (r) => {
+        if (r.ok) await (await caches.open(SHELL)).put(e.request, r.clone());
+        return r;
+      });
+      if (!cached) return net;
+      const timeout = new Promise((ok) => setTimeout(() => ok(cached), 3000));
+      return Promise.race([net.catch(() => cached), timeout]);
+    })());
     return;
   }
   if (u.pathname.includes('/data/')) return; // map downloads go straight to the network

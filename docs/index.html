@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f6feb">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#eef2f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1413" media="(prefers-color-scheme: dark)">
 <title>Офлайн-навигатор</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
@@ -13,14 +15,16 @@
 <body>
 <div id="map"></div>
 
-<section id="panel">
+<section id="panel" aria-label="Маршрут">
   <div class="field">
-    <span class="dot a">А</span>
-    <input id="from" placeholder="Моё местоположение" autocomplete="off" enterkeyhint="search">
+    <span class="dot a" aria-hidden="true">А</span>
+    <input id="from" placeholder="Моё местоположение" autocomplete="off" enterkeyhint="search" aria-label="Откуда">
+    <button id="swap" class="icon-btn" aria-label="Поменять местами откуда и куда">⇅</button>
   </div>
   <div class="field">
-    <span class="dot b">Б</span>
-    <input id="to" placeholder="Куда? Улица и дом" autocomplete="off" enterkeyhint="search">
+    <span class="dot b" aria-hidden="true">Б</span>
+    <input id="to" placeholder="Куда? Улица и дом" autocomplete="off" enterkeyhint="search" aria-label="Куда">
+    <button id="fav" class="icon-btn" aria-label="В избранное" aria-pressed="false">☆</button>
   </div>
   <ul id="results" hidden></ul>
   <div class="row">
@@ -30,18 +34,36 @@
     </div>
     <button id="go" class="primary">Маршрут</button>
   </div>
-  <div id="info" hidden></div>
+  <div class="row">
+    <div id="info" role="status" hidden></div>
+    <button id="start" class="primary go-btn" hidden>▶ Поехали</button>
+  </div>
+</section>
+
+<!-- shown while navigating (body.navigating) -->
+<section id="nav" aria-live="polite">
+  <div id="navIcon" class="turn" data-type="straight" aria-hidden="true">↑</div>
+  <div class="nav-text">
+    <div id="navDist"></div>
+    <div id="navText"></div>
+  </div>
+</section>
+<section id="navbar" aria-label="Навигация">
+  <div id="navRemain"></div>
+  <button id="voice" class="icon-btn" aria-label="Голосовые подсказки" aria-pressed="true">🔊</button>
+  <button id="stop" class="stop-btn">Стоп</button>
 </section>
 
 <div id="fabs">
-  <button id="me" class="fab" aria-label="Где я">📍</button>
-  <button id="maps" class="fab" aria-label="Карты городов">🗺️</button>
+  <button id="me" class="fab" aria-label="Где я"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button id="maps" class="fab" aria-label="Карты городов"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2.5 8 12 13l9.5-5z"/><path d="m2.5 12.5 9.5 5 9.5-5M2.5 16.5l9.5 5 9.5-5" stroke-linecap="round"/></svg></button>
 </div>
-<div id="gps" class="badge" hidden></div>
+<div id="gps" class="badge" role="status" hidden></div>
 
-<dialog id="downloads">
-  <h2>Карты городов</h2>
+<dialog id="downloads" aria-labelledby="dl-title">
+  <h2 id="dl-title">Карты городов</h2>
   <p class="hint">Скачайте заранее, пока есть интернет (лучше по Wi-Fi). Потом всё работает без связи — даже в режиме полёта. Геолокацию на телефоне оставьте включённой.</p>
+  <p id="ios-hint" class="hint small" hidden>На iPhone: нажмите «Поделиться» → «На экран Домой» и открывайте навигатор с иконки — иначе Safari может удалить скачанные карты через 7 дней.</p>
   <ul id="cities"></ul>
   <p class="hint small">Карты © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> (ODbL), стиль и тайлы <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a>, движок карты <a href="https://maplibre.org" target="_blank" rel="noopener">MapLibre</a>.</p>
   <form method="dialog"><button class="primary wide">Закрыть</button></form>

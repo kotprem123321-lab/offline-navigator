@@ -2,6 +2,7 @@
  {
   "id": "dnipro",
   "name": "Днепр",
+  "version": "0df3cae79d",
   "center": [
    35.0462,
    48.4647
@@ -23,19 +24,20 @@
     "parts": [
      "data/dnipro/graph.bin.gz.0"
     ],
-    "size": 6082451
+    "size": 6122716
    },
    "addr": {
     "parts": [
      "data/dnipro/addr.json.gz.0"
     ],
-    "size": 662062
+    "size": 689641
    }
   }
  },
  {
   "id": "kyiv",
   "name": "Киев",
+  "version": "fc38268573",
   "center": [
    30.5234,
    50.4501
@@ -57,19 +59,20 @@
     "parts": [
      "data/kyiv/graph.bin.gz.0"
     ],
-    "size": 15465923
+    "size": 15556056
    },
    "addr": {
     "parts": [
      "data/kyiv/addr.json.gz.0"
     ],
-    "size": 1155342
+    "size": 1199096
    }
   }
  },
  {
   "id": "kharkiv",
   "name": "Харьков",
+  "version": "1cd0d0c309",
   "center": [
    36.2304,
    49.9935
@@ -91,19 +94,20 @@
     "parts": [
      "data/kharkiv/graph.bin.gz.0"
     ],
-    "size": 7530874
+    "size": 7578762
    },
    "addr": {
     "parts": [
      "data/kharkiv/addr.json.gz.0"
     ],
-    "size": 345466
+    "size": 382636
    }
   }
  },
  {
   "id": "zaporizhzhia",
   "name": "Запорожье",
+  "version": "94f6bba2f7",
   "center": [
    35.1396,
    47.8388
@@ -125,19 +129,20 @@
     "parts": [
      "data/zaporizhzhia/graph.bin.gz.0"
     ],
-    "size": 2605982
+    "size": 2623110
    },
    "addr": {
     "parts": [
      "data/zaporizhzhia/addr.json.gz.0"
     ],
-    "size": 151143
+    "size": 165925
    }
   }
  },
  {
   "id": "odesa",
   "name": "Одесса",
+  "version": "7d9b636d8e",
   "center": [
    30.7233,
    46.4825
@@ -159,19 +164,20 @@
     "parts": [
      "data/odesa/graph.bin.gz.0"
     ],
-    "size": 3672359
+    "size": 3699151
    },
    "addr": {
     "parts": [
      "data/odesa/addr.json.gz.0"
     ],
-    "size": 297097
+    "size": 316001
    }
   }
  },
  {
   "id": "lviv",
   "name": "Львов",
+  "version": "9bc5cd97b8",
   "center": [
    24.0297,
    49.8397
@@ -193,13 +199,13 @@
     "parts": [
      "data/lviv/graph.bin.gz.0"
     ],
-    "size": 7875155
+    "size": 7916702
    },
    "addr": {
     "parts": [
      "data/lviv/addr.json.gz.0"
     ],
-    "size": 574681
+    "size": 595971
    }
   }
  }

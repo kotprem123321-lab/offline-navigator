@@ -17,6 +17,11 @@ export function parseGraph(buf) {
     off: take(Uint32Array, n + 1), target: take(Uint32Array, E), seg: take(Uint32Array, E),
     segLen: take(Float32Array, S), geomOff: take(Uint32Array, S + 1), geom: take(Int32Array, 2 * G),
   };
+  // maps downloaded before road names existed have no segName block: keep them working (no street names in prompts)
+  const total = 16 + 4 * (3 * n + 1 + 2 * E + 2 * S + 1 + 2 * G) + E + S + n;
+  if (buf.byteLength === total + 4 * S) g.segName = take(Uint32Array, S);
+  else if (buf.byteLength === total) g.segName = new Uint32Array(S);
+  else throw new Error('Файл карты повреждён — удалите и скачайте город заново.');
   g.edgeFlags = take(Uint8Array, E);
   g.segSpeed = take(Uint8Array, S);
   g.nodeFlags = take(Uint8Array, n);
@@ -82,16 +87,96 @@ export function route(g, a, b, mode) {
   edges.reverse();
   const pt = (i) => [g.lon[i] / 1e7, g.lat[i] / 1e7];
   const coords = [pt(a)];
-  let meters = 0;
+  const legs = []; // {seg, from (node), at (index in coords where this edge starts)}
+  let meters = 0, from = a;
   for (const e of edges) {
     const raw = g.seg[e], s = raw & 0x7fffffff, rev = raw >>> 31;
+    legs.push({ seg: s, from, at: coords.length - 1 });
     const mid = [];
     for (let j = g.geomOff[s]; j < g.geomOff[s + 1]; j++) mid.push([g.geom[2 * j + 1] / 1e7, g.geom[2 * j] / 1e7]);
     if (rev) mid.reverse();
     coords.push(...mid, pt(g.target[e]));
     meters += g.segLen[s];
+    from = g.target[e];
   }
-  return { coords, meters, seconds: cost[b] };
+  // cumulative distance along the line, used for "in 300 m" and progress
+  const cum = new Float64Array(coords.length);
+  for (let i = 1; i < coords.length; i++) cum[i] = cum[i - 1] + dist(coords[i - 1][1], coords[i - 1][0], coords[i][1], coords[i][0]);
+  return { coords, cum, legs, meters, seconds: cost[b], mode };
+}
+
+// ---- turn-by-turn ----------------------------------------------------------
+
+const bearing = (p, q) => {
+  const y = (q[1] - p[1]), x = (q[0] - p[0]) * Math.cos(p[1] * RAD);
+  return Math.atan2(x, y) / RAD; // 0 = north, 90 = east
+};
+
+/** Turns along a route: [{type, name, at, dist, lon, lat}], last one is 'arrive'. */
+export function maneuvers(g, r, roads) {
+  const { coords, cum, legs } = r;
+  const steps = [];
+  const nameOf = (leg) => roads[g.segName[leg.seg]] || '';
+  let cur = legs.length ? nameOf(legs[0]) : '';
+  steps.push({ type: 'depart', name: cur, at: 0, dist: 0 });
+  for (let k = 1; k < legs.length; k++) {
+    const at = legs[k].at, u = legs[k].from;
+    const name = nameOf(legs[k]);
+    const degree = g.off[u + 1] - g.off[u];
+    if (degree < 3 && name === cur) continue; // just a bend, no other road to take
+    // look ~20 m back and forward so tiny kinks at the junction don't fool us
+    let i = at, j = at;
+    while (i > 0 && cum[at] - cum[i] < 20) i--;
+    while (j < coords.length - 1 && cum[j] - cum[at] < 20) j++;
+    if (i === at || j === at) continue;
+    let ang = bearing(coords[at], coords[j]) - bearing(coords[i], coords[at]);
+    ang = ((ang + 540) % 360) - 180; // -180..180, + is right
+    const a = Math.abs(ang);
+    let type = null;
+    if (a > 155) type = 'uturn';
+    else if (a >= 55) type = ang < 0 ? 'left' : 'right';
+    else if (a >= 25 && degree >= 3 && name && name !== cur) type = ang < 0 ? 'slight-left' : 'slight-right'; // a fork, not a curve
+    else if (name !== cur && name && degree >= 3) type = 'straight';
+    if (!type) continue;
+    steps.push({ type, name, at, dist: cum[at], lon: coords[at][0], lat: coords[at][1] });
+    cur = name;
+  }
+  const last = coords.length - 1;
+  steps.push({ type: 'arrive', name: '', at: last, dist: cum[last], lon: coords[last][0], lat: coords[last][1] });
+  return steps;
+}
+
+const VERB = {
+  depart: 'Начните движение', left: 'поверните налево', right: 'поверните направо',
+  'slight-left': 'держитесь левее', 'slight-right': 'держитесь правее', uturn: 'развернитесь',
+  straight: 'продолжайте прямо', arrive: 'вы на месте',
+};
+export const stepText = (s) => VERB[s.type] + (s.name && s.type !== 'arrive' ? (s.type === 'depart' ? ' по ' : ' на ') + s.name : '');
+export const fmtDist = (m) => (m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} км` : `${Math.max(10, Math.round(m / 10) * 10)} м`);
+
+/**
+ * Where we are on the route: nearest point on the line to (lat, lon).
+ * Searches near `hint` (last coords index) first. Returns {idx, along, off} in metres.
+ */
+export function progress(r, lat, lon, hint = 0) {
+  const { coords, cum } = r;
+  const k = Math.cos(lat * RAD);
+  let best = { idx: 0, along: 0, off: Infinity };
+  const scan = (from, to) => {
+    for (let i = Math.max(0, from); i < Math.min(coords.length - 1, to); i++) {
+      const [ax, ay] = coords[i], [bx, by] = coords[i + 1];
+      const dx = (bx - ax) * k, dy = by - ay;
+      const px = (lon - ax) * k, py = lat - ay;
+      const len2 = dx * dx + dy * dy;
+      const t = len2 ? Math.max(0, Math.min(1, (px * dx + py * dy) / len2)) : 0;
+      const ex = px - t * dx, ey = py - t * dy;
+      const off = Math.sqrt(ex * ex + ey * ey) * RAD * R;
+      if (off < best.off) best = { idx: i, along: cum[i] + t * (cum[i + 1] - cum[i]), off };
+    }
+  };
+  scan(hint - 5, hint + 300);
+  if (best.off > 60) scan(0, coords.length); // lost the thread: check the whole line
+  return best;
 }
 
 function edgeSource(g, e) {
@@ -136,7 +221,7 @@ class Heap {
 
 const STOP = new Set(('вулиця вул улица ул проспект просп пр пр-т провулок пров переулок пер бульвар бул б-р ' +
   'площа пл площадь шосе шоссе узвиз спуск набережна набережная наб тупик произд проезд м г город мисто ' +
-  'село смт поселок селище дом д буд будинок').split(' ').map((w) => norm(w)));
+  'село смт поселок селище дом д буд будинок').split(' ').flatMap((w) => norm(w).split(' '))); // "б-р" -> "б", "р"
 
 /** Lowercase and fold Ukrainian/Russian spelling differences so "Яворницкого" == "Яворницького". */
 export function norm(s) {
@@ -158,7 +243,8 @@ export function prepareIndex(data) {
 
 /** Returns up to `limit` results: {label, lat, lon}. */
 export function search(idx, query, limit = 20, near = null) {
-  const toks = norm(query).split(' ').filter((t) => t && !STOP.has(t));
+  // "5 а" / "5-а" -> "5а" before splitting, so the letter is not taken for a street word
+  const toks = norm(query).replace(/(\d) ([а-яa-z])(?= |$)/g, '$1$2').split(' ').filter((t) => t && !STOP.has(t));
   const num = toks.find((t) => /^\d+[а-яa-z]?(\/\d+[а-яa-z]?)?$/.test(t));
   const words = toks.filter((t) => t !== num);
   if (!words.length) return [];
@@ -188,8 +274,8 @@ export function search(idx, query, limit = 20, near = null) {
   }
   // closest to `near` (map centre) first; exact house numbers stay ahead of prefix matches
   if (near) {
-    const d = (r) => dist(r.lat, r.lon, near.lat, near.lon);
-    out.sort((a, b) => (b.top || 0) - (a.top || 0) || d(a) - d(b));
+    for (const r of out) r.d = dist(r.lat, r.lon, near.lat, near.lon);
+    out.sort((a, b) => (b.top || 0) - (a.top || 0) || a.d - b.d);
   }
   // one building is often mapped twice (point + outline): same label within ~1 km is one result
   const seen = new Set();

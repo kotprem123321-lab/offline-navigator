@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import { CITIES, bbox } from './cities.mjs';
 import { dist } from '../docs/core.js';
 
@@ -57,7 +58,7 @@ async function buildCity([id, name, lat, lon]) {
         streetPos.push([t.name, c[c.length >> 1]]);
       }
       const a = access(t);
-      if (a) ways.push([f.geometry.coordinates, a]);
+      if (a) ways.push([f.geometry.coordinates, a, t.name || t.ref || '']);
     } else if (t['addr:housenumber'] && (t['addr:street'] || t['addr:place']) && gt !== 'LineString') {
       addrFeat.push([t['addr:street'] || t['addr:place'], t['addr:housenumber'], centroid(f.geometry), t['addr:city']]);
     } else if (t.place && t.name && gt === 'Point') {
@@ -76,13 +77,16 @@ async function buildCity([id, name, lat, lon]) {
     return i;
   };
   const segs = []; // [a, b, len, mid[], a(access)]
-  for (const [c, acc] of ways) {
+  const roadIdx = new Map([['', 0]]), roads = [''];
+  const road = (s) => { let i = roadIdx.get(s); if (i === undefined) { i = roads.length; roadIdx.set(s, i); roads.push(s); } return i; };
+  for (const [c, acc, nm] of ways) {
+    const ri = road(nm);
     let start = 0, len = 0;
     for (let j = 1; j < c.length; j++) {
       len += dist(c[j - 1][1], c[j - 1][0], c[j][1], c[j][0]);
       if (j === c.length - 1 || uses.get(key(c[j])) > 1) {
         const a = node(c[start]), b = node(c[j]);
-        if (a !== b || len > 0) segs.push([a, b, len, c.slice(start + 1, j), acc]);
+        if (a !== b || len > 0) segs.push([a, b, len, c.slice(start + 1, j), acc, ri]);
         start = j; len = 0;
       }
     }
@@ -132,6 +136,7 @@ async function buildCity([id, name, lat, lon]) {
   let gi = 0;
   for (const s of segs) for (const p of s[3]) { geom[gi++] = Math.round(p[1] * 1e7); geom[gi++] = Math.round(p[0] * 1e7); }
   parts.push(Buffer.from(geom.buffer));
+  push(Uint32Array, segs.map((s) => s[5])); // road name index -> addr.json "roads"
   push(Uint8Array, edges.map((e) => e[3]));
   push(Uint8Array, segs.map((s) => s[4].kmh));
   parts.push(Buffer.from(nodeFlags.buffer));
@@ -166,7 +171,7 @@ async function buildCity([id, name, lat, lon]) {
     addr.push(sid(s, city || townAt(y, x), y, x), hn, r5(y), r5(x));
   }
   for (const p of places) p.length = 4; // the app does not need the place type
-  const addrGz = zlib.gzipSync(JSON.stringify({ streets, addr, places }), { level: 9 });
+  const addrGz = zlib.gzipSync(JSON.stringify({ streets, addr, places, roads }), { level: 9 });
 
   // ---- write
   const dir = path.join(OUT, id);
@@ -179,7 +184,9 @@ async function buildCity([id, name, lat, lon]) {
   };
   console.log(id, `nodes=${n} edges=${E} addresses=${addr.length / 4} streets=${streets.length} places=${places.length}`,
     Object.entries(files).map(([k, f]) => `${k}=${(f.size / 1e6).toFixed(1)}MB`).join(' '));
-  return { id, name, center: [lon, lat], bbox: bbox([id, name, lat, lon]), files };
+  // version lets phones see that a downloaded city is outdated (part URLs stay the same)
+  const version = crypto.createHash('sha256').update(graph).update(addrGz).update(String(files.tiles.size)).digest('hex').slice(0, 10);
+  return { id, name, version, center: [lon, lat], bbox: bbox([id, name, lat, lon]), files };
 }
 
 function writeParts(dir, id, file, buf) {
